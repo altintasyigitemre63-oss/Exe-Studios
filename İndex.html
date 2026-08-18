@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exe Bird</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ARAYÜZ (UI) KATMANLARI */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .score-board {
+            font-size: 50px;
+            font-weight: 900;
+            color: white;
+            text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+            margin-top: 20px;
+            display: none;
+        }
+
+        /* PAUSE (DURDURMA) BUTONU (SOL ÜST) */
+        .pause-btn {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            width: 45px;
+            height: 45px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 3px solid #fff;
+            border-radius: 12px;
+            cursor: pointer;
+            pointer-events: auto;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.5);
+            z-index: 15;
+        }
+
+        .pause-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.5);
+        }
+
+        .pause-bar {
+            width: 5px;
+            height: 18px;
+            background-color: #fff;
+            border-radius: 2px;
+        }
+
+        /* PANELLER & MENÜLER */
+        .panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.92);
+            border: 4px solid #f7d308;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 320px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .panel-fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+            border-radius: 0 !important;
+            border: none !important;
+            justify-content: flex-start;
+            padding: 50px 20px 20px 20px;
+        }
+
+        .panel h1 {
+            font-size: 36px;
+            color: #f7d308;
+            text-shadow: 2px 2px #000;
+            margin-bottom: 5px;
+        }
+
+        .btn {
+            background: linear-gradient(180deg, #ffeb3b 0%, #f57f17 100%);
+            border: 3px solid #fff;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #000;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #b71c1c;
+            transition: all 0.1s;
+            text-transform: uppercase;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #b71c1c;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(180deg, #42a5f5 0%, #1565c0 100%);
+            box-shadow: 0 5px 0 #0d47a1;
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(180deg, #ef5350 0%, #c62828 100%);
+            box-shadow: 0 5px 0 #8e0000;
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(180deg, #66bb6a 0%, #2e7d32 100%);
+            box-shadow: 0 5px 0 #1b5e20;
+            color: white;
+        }
+
+        /* MARKET ITEM LİSTESİ */
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+            width: 100%;
+            max-width: 850px;
+            align-self: center;
+        }
+
+        .shop-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #555;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .shop-item.selected {
+            border-color: #4caf50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .shop-item button {
+            padding: 8px 15px;
+            font-size: 14px;
+            margin-top: 5px;
+            width: 100%;
+        }
+
+        /* PREVIEW KUŞ SİMGESİ */
+        .skin-preview {
+            width: 42px;
+            height: 28px;
+            border-radius: 14px;
+            border: 2px solid #000;
+            position: relative;
+        }
+
+        /* RGB ANİMASYONU */
+        @keyframes rgbAnimation {
+            0% { background-color: #ff0000; box-shadow: 0 0 10px #ff0000; }
+            33% { background-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
+            66% { background-color: #0000ff; box-shadow: 0 0 10px #0000ff; }
+            100% { background-color: #ff0000; box-shadow: 0 0 10px #ff0000; }
+        }
+
+        .rgb-skin {
+            animation: rgbAnimation 2s infinite linear;
+        }
+
+        /* AYARLAR ARAYÜZÜ & SLIDERLAR */
+        .settings-container {
+            width: 100%;
+            max-width: 500px;
+            align-self: center;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .setting-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-start;
+            font-size: 18px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .setting-label {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        /* DİL SEÇENEKLERİ IZGARASI (EN ÖNEMLİ 5 DİL) */
+        .lang-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .lang-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid #666;
+            border-radius: 8px;
+            color: #fff;
+            padding: 14px 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: #aaa;
+        }
+
+        .lang-btn.active {
+            background: #f7d308;
+            color: #000;
+            border-color: #fff;
+            box-shadow: 0 0 8px rgba(247, 211, 8, 0.6);
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;
+            border-radius: 5px;
+            background: #444;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #f7d308;
+            cursor: pointer;
+            border: 2px solid #fff;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #f7d308;
+            cursor: pointer;
+            border: 2px solid #fff;
+        }
+
+        .gold-display {
+            font-size: 22px;
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: space-around;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .modal-buttons .btn {
+            flex: 1;
+        }
+
+        .close-btn {
+            position: fixed;
+            top: 20px;
+            right: 25px;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .close-btn::before, .close-btn::after {
+            content: '';
+            position: absolute;
+            width: 35px;
+            height: 5px;
+            background-color: #ff3333;
+            border-radius: 3px;
+            box-shadow: 0 0 5px rgba(255, 0, 0, 0.8);
+        }
+
+        .close-btn::before { transform: rotate(45deg); }
+        .close-btn::after { transform: rotate(-45deg); }
+        .close-btn:hover::before, .close-btn:hover::after { background-color: #ff6666; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="ui-layer">
+            <div class="pause-btn" id="pauseBtn" onclick="pauseGame()">
+                <div class="pause-bar"></div>
+                <div class="pause-bar"></div>
+            </div>
+
+            <div class="score-board" id="scoreDisplay">0</div>
+
+            <!-- ANA MENÜ -->
+            <div class="panel" id="mainMenu">
+                <h1>EXE BIRD</h1>
+                <button class="btn" id="btnPlay" onclick="startGame()">OYNA</button>
+                <button class="btn btn-secondary" id="btnShop" onclick="openShop()">MARKET</button>
+                <button class="btn btn-secondary" id="btnSettings" onclick="openSettings()">AYARLAR</button>
+            </div>
+
+            <!-- PAUSE PANELİ -->
+            <div class="panel" id="pausePanel" style="display: none; z-index: 25;">
+                <h1 id="txtPauseTitle">OYUN DURDURULDU</h1>
+                <button class="btn btn-success" id="btnResume" onclick="resumeGame()">DEVAM ET</button>
+                <button class="btn btn-danger" id="btnPauseMainMenu" onclick="openMainMenu()">ANA MENÜYE DÖN</button>
+            </div>
+
+            <!-- MARKET -->
+            <div class="panel panel-fullscreen" id="shopPanel" style="display: none;">
+                <div class="close-btn" onclick="openMainMenu()"></div>
+                <h1 id="txtShopTitle">MARKET</h1>
+                <div class="gold-display"><span id="txtGoldLabel">Altın</span>: <span id="shopGold">0</span> 🪙</div>
+                <div class="shop-grid" id="shopGrid"></div>
+            </div>
+
+            <!-- AYARLAR -->
+            <div class="panel panel-fullscreen" id="settingsPanel" style="display: none;">
+                <div class="close-btn" onclick="openMainMenu()"></div>
+                <h1 id="txtSettingsTitle">AYARLAR</h1>
+                <div class="settings-container">
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <span id="txtMusicLabel">Müzik Ses Seviyesi</span>
+                            <span id="musicValue">100%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="100" class="slider" id="musicSlider" oninput="updateVolumeSettings()">
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <span id="txtSfxLabel">Ses Efektleri Seviyesi</span>
+                            <span id="sfxValue">100%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="100" class="slider" id="sfxSlider" oninput="updateVolumeSettings()">
+                    </div>
+                    <button class="btn btn-secondary" id="btnLangMenu" onclick="openLanguagePanel()">🌐 DİL SEÇENEKLERİ</button>
+                    <button class="btn btn-danger" style="margin-top: 10px;" id="btnResetData" onclick="showResetConfirm()">VERİLERİ SIFIRLA</button>
+                </div>
+            </div>
+
+            <!-- DİL SEÇME PANELİ (SADECE EN ÖNEMLİ 5 DİL) -->
+            <div class="panel panel-fullscreen" id="languagePanel" style="display: none; z-index: 40;">
+                <div class="close-btn" onclick="closeLanguagePanel()"></div>
+                <h1 id="txtLangTitle">DİL SEÇİMİ</h1>
+                <div class="settings-container">
+                    <div class="lang-grid" id="langGrid">
+                        <button class="lang-btn" onclick="selectLanguage('tr')">Türkçe</button>
+                        <button class="lang-btn" onclick="selectLanguage('en')">English</button>
+                        <button class="lang-btn" onclick="selectLanguage('es')">Español</button>
+                        <button class="lang-btn" onclick="selectLanguage('de')">Deutsch</button>
+                        <button class="lang-btn" onclick="selectLanguage('fr')">Français</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SIFIRLAMA ONAY PANELİ -->
+            <div class="panel" id="resetConfirmPanel" style="display: none; z-index: 50;">
+                <h1 style="color: #ff3333;" id="txtResetTitle">UYARI!</h1>
+                <p style="font-size: 18px; line-height: 1.4;" id="txtResetDesc">Tüm verilerin sıfırlanacak.<br>Kabul ediyor musun?</p>
+                <div class="modal-buttons">
+                    <button class="btn btn-success" id="btnResetYes" onclick="confirmResetData()">EVET</button>
+                    <button class="btn btn-danger" id="btnResetNo" onclick="cancelReset()">HAYIR</button>
+                </div>
+            </div>
+
+            <!-- GAME OVER -->
+            <div class="panel" id="gameOverPanel" style="display: none;">
+                <h1 style="color: #ff5252;" id="txtGameOverTitle">KAYBETTİN!</h1>
+                <p style="font-size: 20px;"><span id="txtScoreLabel">Skor</span>: <span id="finalScore">0</span></p>
+                <p style="font-size: 18px; color: #ffeb3b;"><span id="txtHighScoreLabel">En Yüksek Skor</span>: <span id="highScore">0</span></p>
+                <button class="btn" id="btnReplay" onclick="startGame()">TEKRAR OYNA</button>
+                <button class="btn btn-secondary" id="btnGameOverMainMenu" onclick="openMainMenu()">ANA MENÜ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SADECE EN ÖNEMLİ 5 DİL VERİTABANI
+        const i18n = {
+            tr: {
+                play: "OYNA", shop: "MARKET", settings: "AYARLAR", pauseTitle: "OYUN DURDURULDU",
+                resume: "DEVAM ET", mainMenu: "ANA MENÜYE DÖN", shopTitle: "MARKET", gold: "Altın",
+                settingsTitle: "AYARLAR", music: "Müzik Ses Seviyesi", sfx: "Ses Efektleri Seviyesi",
+                langBtn: "🌐 DİL SEÇENEKLERİ", resetData: "VERİLERİ SIFIRLA", langTitle: "DİL SEÇİMİ",
+                resetTitle: "UYARI!", resetDesc: "Tüm verilerin sıfırlanacak.<br>Kabul ediyor musun?",
+                yes: "EVET", no: "HAYIR", gameOver: "KAYBETTİN!", score: "Skor", highScore: "En Yüksek Skor",
+                replay: "TEKRAR OYNA", owned: "Sahipsin", select: "SEÇ", selected: "SEÇİLİ", buy: "SATIN AL",
+                noGold: "Yetersiz Altın!",
+                birdNames: { 
+                    yellow: "Klasik Sarı", blue: "Mavi Kuş", red: "Kırmızı Kuş", green: "Yeşil Kuş", 
+                    neon_cyan: "⚡ Neon Mavi", neon_green: "⚡ Neon Yeşil", neon_pink: "⚡ Neon Pembe",
+                    backrooms: "👁️ Backrooms Kuşu", rgb: "🌈 RGB Kuş (Efsane)"
+                }
+            },
+            en: {
+                play: "PLAY", shop: "SHOP", settings: "SETTINGS", pauseTitle: "GAME PAUSED",
+                resume: "RESUME", mainMenu: "MAIN MENU", shopTitle: "SHOP", gold: "Gold",
+                settingsTitle: "SETTINGS", music: "Music Volume", sfx: "SFX Volume",
+                langBtn: "🌐 LANGUAGE OPTIONS", resetData: "RESET DATA", langTitle: "SELECT LANGUAGE",
+                resetTitle: "WARNING!", resetDesc: "All data will be reset.<br>Do you accept?",
+                yes: "YES", no: "NO", gameOver: "GAME OVER!", score: "Score", highScore: "High Score",
+                replay: "PLAY AGAIN", owned: "Owned", select: "SELECT", selected: "SELECTED", buy: "BUY",
+                noGold: "Not Enough Gold!",
+                birdNames: { 
+                    yellow: "Classic Yellow", blue: "Blue Bird", red: "Red Bird", green: "Green Bird", 
+                    neon_cyan: "⚡ Neon Cyan", neon_green: "⚡ Neon Green", neon_pink: "⚡ Neon Pink",
+                    backrooms: "👁️ Backrooms Bird", rgb: "🌈 RGB Bird (Legend)"
+                }
+            },
+            es: {
+                play: "JUGAR", shop: "TIENDA", settings: "AJUSTES", pauseTitle: "JUEGO PAUSADO",
+                resume: "CONTINUAR", mainMenu: "MENÚ PRINCIPAL", shopTitle: "TIENDA", gold: "Oro",
+                settingsTitle: "AJUSTES", music: "Volumen de Música", sfx: "Volumen de Efectos",
+                langBtn: "🌐 IDIOMAS", resetData: "REINICIAR DATOS", langTitle: "SELECCIONAR IDIOMA",
+                resetTitle: "¡ADVERTENCIA!", resetDesc: "Todos tus datos se reiniciarán.<br>¿Aceptas?",
+                yes: "SÍ", no: "NO", gameOver: "¡HAS PERDIDO!", score: "Puntuación", highScore: "RRecord",
+                replay: "JUGAR DE NUEVO", owned: "Comprado", select: "ELEGIR", selected: "ELEGIDO", buy: "COMPRAR",
+                noGold: "¡Oro insuficiente!",
+                birdNames: { 
+                    yellow: "Amarillo Clásico", blue: "Pájaro Azul", red: "Pájaro Rojo", green: "Pájaro Verde", 
+                    neon_cyan: "⚡ Neón Cían", neon_green: "⚡ Neón Verde", neon_pink: "⚡ Neón Rosa",
+                    backrooms: "👁️ Pájaro Backrooms", rgb: "🌈 Pájaro RGB (Leyenda)"
+                }
+            },
+            de: {
+                play: "SPIELEN", shop: "SHOP", settings: "EINSTELLUNGEN", pauseTitle: "SPIEL PAUSIERT",
+                resume: "FORTSETZEN", mainMenu: "HAUPTMENÜ", shopTitle: "SHOP", gold: "Gold",
+                settingsTitle: "EINSTELLUNGEN", music: "Musiklautstärke", sfx: "SFX-Lautstärke",
+                langBtn: "🌐 SPRACHEN", resetData: "DATEN ZURÜCKSETZEN", langTitle: "SPRACHE WÄHLEN",
+                resetTitle: "WARNUNG!", resetDesc: "Alle Daten werden zurückgesetzt.<br>Akzeptieren?",
+                yes: "JA", no: "NEIN", gameOver: "GAME OVER!", score: "Punkte", highScore: "Highscore",
+                replay: "NOCHMAL SPIELEN", owned: "Besitzt", select: "WÄHLEN", selected: "AUSGEWÄHLT", buy: "KAUFEN",
+                noGold: "Nicht genug Gold!",
+                birdNames: { 
+                    yellow: "Klassisch Gelb", blue: "Blauer Vogel", red: "Roter Vogel", green: "Grüner Vogel", 
+                    neon_cyan: "⚡ Neon Cyan", neon_green: "⚡ Neon Grün", neon_pink: "⚡ Neon Pink",
+                    backrooms: "👁️ Backrooms Vogel", rgb: "🌈 RGB Vogel (Legende)"
+                }
+            },
+            fr: {
+                play: "JOUER", shop: "BOUTIQUE", settings: "PARAMÈTRES", pauseTitle: "JEU EN PAUSE",
+                resume: "REPRENDRE", mainMenu: "MENU PRINCIPAL", shopTitle: "BOUTIQUE", gold: "Or",
+                settingsTitle: "PARAMÈTRES", music: "Volume Musique", sfx: "Volume SFX",
+                langBtn: "🌐 LANGUES", resetData: "RÉINITIALISER", langTitle: "CHOISIR LA LANGUE",
+                resetTitle: "ATTENTION!", resetDesc: "Toutes les données seront effacées.<br>Accepter?",
+                yes: "OUI", no: "NON", gameOver: "PARTIE TERMINÉE!", score: "Score", highScore: "Meilleur Score",
+                replay: "REJOUER", owned: "Possédé", select: "CHOISIR", selected: "SÉLECTIONNÉ", buy: "ACHETER",
+                noGold: "Pas assez d'or!",
+                birdNames: { 
+                    yellow: "Jaune Classique", blue: "Oiseau Bleu", red: "Oiseau Rouge", green: "Oiseau Vert", 
+                    neon_cyan: "⚡ Néo Cyan", neon_green: "⚡ Néon Vert", neon_pink: "⚡ Néon Rose",
+                    backrooms: "👁️ Oiseau Backrooms", rgb: "🌈 Oiseau RGB (Légende)"
+                }
+            }
+        };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let settings = JSON.parse(localStorage.getItem('fb_settings')) || { musicVol: 100, sfxVol: 100, lang: 'tr' };
+        let gold = parseInt(localStorage.getItem('fb_gold')) || 0;
+        let highScore = parseInt(localStorage.getItem('fb_highscore')) || 0;
+
+        function saveSettings() {
+            localStorage.setItem('fb_settings', JSON.stringify(settings));
+        }
+
+        function applyLanguage() {
+            let l = i18n[settings.lang] || i18n['tr'];
+            
+            document.getElementById('btnPlay').innerText = l.play;
+            document.getElementById('btnShop').innerText = l.shop;
+            document.getElementById('btnSettings').innerText = l.settings;
+            
+            document.getElementById('txtPauseTitle').innerText = l.pauseTitle;
+            document.getElementById('btnResume').innerText = l.resume;
+            document.getElementById('btnPauseMainMenu').innerText = l.mainMenu;
+
+            document.getElementById('txtShopTitle').innerText = l.shopTitle;
+            document.getElementById('txtGoldLabel').innerText = l.gold;
+
+            document.getElementById('txtSettingsTitle').innerText = l.settingsTitle;
+            document.getElementById('txtMusicLabel').innerText = l.music;
+            document.getElementById('txtSfxLabel').innerText = l.sfx;
+            document.getElementById('btnLangMenu').innerText = l.langBtn;
+            document.getElementById('btnResetData').innerText = l.resetData;
+
+            document.getElementById('txtLangTitle').innerText = l.langTitle;
+
+            document.getElementById('txtResetTitle').innerText = l.resetTitle;
+            document.getElementById('txtResetDesc').innerHTML = l.resetDesc;
+            document.getElementById('btnResetYes').innerText = l.yes;
+            document.getElementById('btnResetNo').innerText = l.no;
+
+            document.getElementById('txtGameOverTitle').innerText = l.gameOver;
+            document.getElementById('txtScoreLabel').innerText = l.score;
+            document.getElementById('txtHighScoreLabel').innerText = l.highScore;
+            document.getElementById('btnReplay').innerText = l.replay;
+            document.getElementById('btnGameOverMainMenu').innerText = l.mainMenu;
+
+            updateLangButtonsUI();
+            if (document.getElementById('shopPanel').style.display === 'flex') {
+                renderShop();
+            }
+        }
+
+        // WEB AUDIO SİSTEMİ
+        let audioCtx = null;
+        let bgmInterval = null;
+
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            let sfxVol = settings.sfxVol / 100;
+            if (sfxVol <= 0) return;
+            initAudioContext();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'click') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(120, now + 0.04);
+                gain.gain.setValueAtTime(0.4 * sfxVol, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.04);
+
+            } else if (type === 'bup') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+                gain.gain.setValueAtTime(0.5 * sfxVol, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.08);
+
+            } else if (type === 'score') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, now);
+                osc.frequency.setValueAtTime(880, now + 0.07);
+                gain.gain.setValueAtTime(0.2 * sfxVol, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.2);
+
+            } else if (type === 'hit') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+                gain.gain.setValueAtTime(0.3 * sfxVol, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.12);
+            }
+        }
+
+        function startBGM() {
+            stopBGM();
+            let musicVol = settings.musicVol / 100;
+            if (musicVol <= 0) return;
+            let notes = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63];
+            let step = 0;
+
+            bgmInterval = setInterval(() => {
+                let currentMusicVol = settings.musicVol / 100;
+                if (currentMusicVol <= 0) return;
+                initAudioContext();
+                if (!audioCtx) return;
+
+                let now = audioCtx.currentTime;
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(notes[step % notes.length], now);
+                gain.gain.setValueAtTime(0.03 * currentMusicVol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.35);
+                step++;
+            }, 350);
+        }
+
+        function stopBGM() {
+            if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; }
+        }
+
+        function updateMusicState() {
+            if (settings.musicVol > 0) { if (!bgmInterval) startBGM(); } 
+            else { stopBGM(); }
+        }
+
+        // MARKET KOSTÜMLERİ
+        const skins = [
+            { id: 'yellow', price: 0, body: '#f7d308', wing: '#e65100', glow: null },
+            { id: 'blue', price: 50, body: '#29b6f6', wing: '#0277bd', glow: null },
+            { id: 'red', price: 150, body: '#ef5350', wing: '#c62828', glow: null },
+            { id: 'green', price: 300, body: '#66bb6a', wing: '#2e7d32', glow: null },
+            { id: 'neon_cyan', price: 500, body: '#00f3ff', wing: '#0088cc', glow: '#00f3ff' },
+            { id: 'neon_green', price: 800, body: '#39ff14', wing: '#009900', glow: '#39ff14' },
+            { id: 'neon_pink', price: 1200, body: '#ff007f', wing: '#99004c', glow: '#ff007f' },
+            { id: 'backrooms', price: 2000, body: '#c2a649', wing: '#57481b', glow: '#e3c868' },
+            { id: 'rgb', price: 3500, body: 'rgb', wing: '#ffffff', glow: 'rgb' }
+        ];
+
+        let unlockedSkins = JSON.parse(localStorage.getItem('fb_skins')) || ['yellow'];
+        let activeSkin = localStorage.getItem('fb_active_skin') || 'yellow';
+
+        let gameState = 'MENU';
+        let score = 0;
+        let frameCount = 0;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Binalar
+        const buildings = [];
+        function initBuildings() {
+            buildings.length = 0;
+            let x = 0;
+            while (x < canvas.width + 200) {
+                let w = 60 + Math.random() * 60;
+                let h = 150 + Math.random() * 200;
+                buildings.push({ x: x, width: w, height: h });
+                x += w + 10;
+            }
+        }
+        initBuildings();
+
+        function updateBuildings() {
+            buildings.forEach(b => { b.x -= 0.5; });
+            if (buildings.length > 0 && buildings[0].x + buildings[0].width < 0) {
+                let lastB = buildings[buildings.length - 1];
+                let w = 60 + Math.random() * 60;
+                let h = 150 + Math.random() * 200;
+                buildings.shift();
+                buildings.push({ x: lastB.x + lastB.width + 10, width: w, height: h });
+            }
+        }
+
+        function drawBuildings() {
+            ctx.fillStyle = '#2c3e50';
+            buildings.forEach(b => {
+                ctx.fillRect(b.x, canvas.height - 50 - b.height, b.width, b.height);
+                ctx.fillStyle = 'rgba(241, 196, 15, 0.3)';
+                for (let wy = canvas.height - 50 - b.height + 15; wy < canvas.height - 70; wy += 25) {
+                    for (let wx = b.x + 10; wx < b.x + b.width - 15; wx += 18) {
+                        ctx.fillRect(wx, wy, 8, 12);
+                    }
+                }
+                ctx.fillStyle = '#2c3e50';
+            });
+        }
+
+        // Kuş
+        const bird = {
+            x: 0, y: 0, width: 38, height: 26, gravity: 0.35, lift: -7.5, velocity: 0, rotation: 0,
+            reset: function() {
+                this.x = canvas.width * 0.25;
+                this.y = canvas.height / 2;
+                this.velocity = 0;
+                this.rotation = 0;
+            },
+            update: function() {
+                this.velocity += this.gravity;
+                this.y += this.velocity;
+
+                if (this.velocity < 0) {
+                    this.rotation = -25 * Math.PI / 180;
+                } else {
+                    this.rotation = Math.min(Math.PI / 2, this.velocity * 4 * Math.PI / 180);
+                }
+
+                if (this.y + this.height / 2 >= canvas.height - 50) {
+                    this.y = canvas.height - 50 - this.height / 2;
+                    triggerGameOver();
+                }
+                if (this.y - this.height / 2 <= 0) {
+                    this.y = this.height / 2;
+                    this.velocity = 0;
+                }
+            },
+            flap: function() {
+                this.velocity = this.lift;
+                playSound('bup');
+            },
+            draw: function() {
+                let currentSkinObj = skins.find(s => s.id === activeSkin) || skins[0];
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // DİNAMİK RENKLER & PARLAMA (GLOW)
+                let bodyColor = currentSkinObj.body;
+                let wingColor = currentSkinObj.wing;
+
+                if (currentSkinObj.id === 'rgb') {
+                    let hue = (Date.now() / 5) % 360;
+                    bodyColor = `hsl(${hue}, 100%, 50%)`;
+                    ctx.shadowColor = bodyColor;
+                    ctx.shadowBlur = 15;
+                } else if (currentSkinObj.glow) {
+                    ctx.shadowColor = currentSkinObj.glow;
+                    ctx.shadowBlur = 15;
+                }
+
+                // Gövde
+                ctx.fillStyle = bodyColor;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#000';
+                ctx.stroke();
+
+                // Gölgeyi sıfırla
+                ctx.shadowBlur = 0;
+
+                // Göz
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(6, -5, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(8, -5, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Gaga
+                ctx.fillStyle = '#f4511e';
+                ctx.beginPath();
+                ctx.moveTo(10, 0);
+                ctx.lineTo(22, 4);
+                ctx.lineTo(10, 8);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Kanat
+                ctx.fillStyle = wingColor;
+                ctx.beginPath();
+                ctx.ellipse(-6, 2, 10, 6, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        };
+
+        // Borular
+        const pipes = [];
+        const pipeWidth = 70;
+        const pipeGap = 170;
+        const pipeSpeed = 3;
+
+        function createPipe() {
+            const minHeight = 80;
+            const maxHeight = canvas.height - 50 - pipeGap - minHeight;
+            const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+
+            pipes.push({
+                x: canvas.width,
+                top: topHeight,
+                bottom: canvas.height - 50 - (topHeight + pipeGap),
+                passed: false
+            });
+        }
+
+        function updatePipes() {
+            if (frameCount % 100 === 0) createPipe();
+
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                pipes[i].x -= pipeSpeed;
+
+                if (!pipes[i].passed && pipes[i].x + pipeWidth < bird.x) {
+                    pipes[i].passed = true;
+                    score++;
+                    gold++;
+                    localStorage.setItem('fb_gold', gold);
+                    document.getElementById('scoreDisplay').innerText = score;
+                    playSound('score');
+                }
+
+                if (
+                    bird.x + bird.width / 2 > pipes[i].x &&
+                    bird.x - bird.width / 2 < pipes[i].x + pipeWidth
+                ) {
+                    if (
+                        bird.y - bird.height / 2 < pipes[i].top ||
+                        bird.y + bird.height / 2 > canvas.height - 50 - pipes[i].bottom
+                    ) {
+                        playSound('hit');
+                        triggerGameOver();
+                    }
+                }
+
+                if (pipes[i].x + pipeWidth < 0) pipes.splice(i, 1);
+            }
+        }
+
+        function drawPipes() {
+            ctx.fillStyle = '#73bf2e';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+
+            pipes.forEach(pipe => {
+                ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+                ctx.strokeRect(pipe.x, 0, pipeWidth, pipe.top);
+                ctx.fillRect(pipe.x - 4, pipe.top - 20, pipeWidth + 8, 20);
+                ctx.strokeRect(pipe.x - 4, pipe.top - 20, pipeWidth + 8, 20);
+
+                const bottomY = canvas.height - 50 - pipe.bottom;
+                ctx.fillRect(pipe.x, bottomY, pipeWidth, pipe.bottom);
+                ctx.strokeRect(pipe.x, bottomY, pipeWidth, pipe.bottom);
+                ctx.fillRect(pipe.x - 4, bottomY, pipeWidth + 8, 20);
+                ctx.strokeRect(pipe.x - 4, bottomY, pipeWidth + 8, 20);
+            });
+        }
+
+        function drawBackground() {
+            let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, '#1a2a6c');
+            grad.addColorStop(0.5, '#b21f1f');
+            grad.addColorStop(1, '#fdbb2d');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawBuildings();
+
+            ctx.fillStyle = '#ded895';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+            ctx.fillStyle = '#73bf2e';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 12);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - 50);
+            ctx.lineTo(canvas.width, canvas.height - 50);
+            ctx.stroke();
+        }
+
+        // KONTROLLER
+        function startGame() {
+            playSound('click');
+            hideAllPanels();
+            document.getElementById('scoreDisplay').style.display = 'block';
+            document.getElementById('pauseBtn').style.display = 'flex';
+            bird.reset();
+            pipes.length = 0;
+            score = 0;
+            frameCount = 0;
+            document.getElementById('scoreDisplay').innerText = score;
+            gameState = 'PLAYING';
+            bird.flap();
+        }
+
+        function pauseGame() {
+            if (gameState !== 'PLAYING') return;
+            playSound('click');
+            gameState = 'PAUSED';
+            document.getElementById('pausePanel').style.display = 'flex';
+        }
+
+        function resumeGame() {
+            playSound('click');
+            document.getElementById('pausePanel').style.display = 'none';
+            gameState = 'PLAYING';
+        }
+
+        function triggerGameOver() {
+            gameState = 'GAMEOVER';
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('fb_highscore', highScore);
+            }
+            document.getElementById('scoreDisplay').style.display = 'none';
+            document.getElementById('pauseBtn').style.display = 'none';
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('highScore').innerText = highScore;
+            document.getElementById('gameOverPanel').style.display = 'flex';
+        }
+
+        function openMainMenu() {
+            playSound('click');
+            hideAllPanels();
+            document.getElementById('mainMenu').style.display = 'flex';
+            document.getElementById('scoreDisplay').style.display = 'none';
+            document.getElementById('pauseBtn').style.display = 'none';
+            gameState = 'MENU';
+            bird.reset();
+            updateMusicState();
+        }
+
+        function openShop() {
+            playSound('click');
+            hideAllPanels();
+            document.getElementById('shopGold').innerText = gold;
+            renderShop();
+            document.getElementById('shopPanel').style.display = 'flex';
+        }
+
+        function renderShop() {
+            let l = i18n[settings.lang] || i18n['tr'];
+            const grid = document.getElementById('shopGrid');
+            grid.innerHTML = '';
+            skins.forEach(skin => {
+                let isUnlocked = unlockedSkins.includes(skin.id);
+                let isSelected = activeSkin === skin.id;
+                let skinName = (l.birdNames && l.birdNames[skin.id]) ? l.birdNames[skin.id] : skin.id;
+
+                let div = document.createElement('div');
+                div.className = `shop-item ${isSelected ? 'selected' : ''}`;
+
+                let previewStyle = "";
+                let previewClass = "skin-preview";
+                
+                if (skin.id === 'rgb') {
+                    previewClass += " rgb-skin";
+                } else {
+                    previewStyle = `background:${skin.body};`;
+                    if (skin.glow) {
+                        previewStyle += `box-shadow: 0 0 10px ${skin.glow};`;
+                    }
+                }
+
+                div.innerHTML = `
+                    <div class="${previewClass}" style="${previewStyle}"></div>
+                    <strong>${skinName}</strong>
+                    <span>${isUnlocked ? l.owned : skin.price + ' 🪙'}</span>
+                `;
+
+                let btn = document.createElement('button');
+                btn.className = 'btn';
+                if (isSelected) {
+                    btn.innerText = l.selected;
+                    btn.disabled = true;
+                } else if (isUnlocked) {
+                    btn.innerText = l.select;
+                    btn.onclick = () => {
+                        playSound('click');
+                        activeSkin = skin.id;
+                        localStorage.setItem('fb_active_skin', activeSkin);
+                        renderShop();
+                    };
+                } else {
+                    btn.innerText = l.buy;
+                    btn.onclick = () => {
+                        if (gold >= skin.price) {
+                            playSound('click');
+                            gold -= skin.price;
+                            localStorage.setItem('fb_gold', gold);
+                            unlockedSkins.push(skin.id);
+                            localStorage.setItem('fb_skins', JSON.stringify(unlockedSkins));
+                            activeSkin = skin.id;
+                            localStorage.setItem('fb_active_skin', activeSkin);
+                            document.getElementById('shopGold').innerText = gold;
+                            renderShop();
+                        } else {
+                            playSound('hit');
+                            let originalText = btn.innerText;
+                            btn.innerText = l.noGold;
+                            btn.style.background = '#c62828';
+                            setTimeout(() => {
+                                btn.innerText = originalText;
+                                btn.style.background = '';
+                            }, 1000);
+                        }
+                    };
+                }
+                div.appendChild(btn);
+                grid.appendChild(div);
+            });
+        }
+
+        function openSettings() {
+            playSound('click');
+            hideAllPanels();
+            document.getElementById('musicSlider').value = settings.musicVol;
+            document.getElementById('musicValue').innerText = settings.musicVol + '%';
+            document.getElementById('sfxSlider').value = settings.sfxVol;
+            document.getElementById('sfxValue').innerText = settings.sfxVol + '%';
+            document.getElementById('settingsPanel').style.display = 'flex';
+        }
+
+        function openLanguagePanel() {
+            playSound('click');
+            document.getElementById('settingsPanel').style.display = 'none';
+            document.getElementById('languagePanel').style.display = 'flex';
+        }
+
+        function closeLanguagePanel() {
+            playSound('click');
+            document.getElementById('languagePanel').style.display = 'none';
+            document.getElementById('settingsPanel').style.display = 'flex';
+        }
+
+        function selectLanguage(langCode) {
+            playSound('click');
+            settings.lang = langCode;
+            saveSettings();
+            applyLanguage();
+        }
+
+        function updateLangButtonsUI() {
+            let currentLang = settings.lang || 'tr';
+            const buttons = document.querySelectorAll('.lang-btn');
+            buttons.forEach(btn => {
+                if (btn.getAttribute('onclick').includes(`'${currentLang}'`)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        function updateVolumeSettings() {
+            let mVal = document.getElementById('musicSlider').value;
+            let sVal = document.getElementById('sfxSlider').value;
+            settings.musicVol = parseInt(mVal);
+            settings.sfxVol = parseInt(sVal);
+            document.getElementById('musicValue').innerText = mVal + '%';
+            document.getElementById('sfxValue').innerText = sVal + '%';
+            saveSettings();
+            updateMusicState();
+        }
+
+        function showResetConfirm() {
+            playSound('click');
+            document.getElementById('resetConfirmPanel').style.display = 'flex';
+        }
+
+        function cancelReset() {
+            playSound('click');
+            document.getElementById('resetConfirmPanel').style.display = 'none';
+        }
+
+        function confirmResetData() {
+            playSound('click');
+            localStorage.clear();
+            gold = 0;
+            highScore = 0;
+            unlockedSkins = ['yellow'];
+            activeSkin = 'yellow';
+            settings = { musicVol: 100, sfxVol: 100, lang: 'tr' };
+            applyLanguage();
+            document.getElementById('resetConfirmPanel').style.display = 'none';
+            openMainMenu();
+        }
+
+        function hideAllPanels() {
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('pausePanel').style.display = 'none';
+            document.getElementById('shopPanel').style.display = 'none';
+            document.getElementById('settingsPanel').style.display = 'none';
+            document.getElementById('languagePanel').style.display = 'none';
+            document.getElementById('gameOverPanel').style.display = 'none';
+            document.getElementById('resetConfirmPanel').style.display = 'none';
+        }
+
+        function enableFullScreen() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                let docElm = document.documentElement;
+                if (docElm.requestFullscreen) docElm.requestFullscreen().catch(() => {});
+                else if (docElm.webkitRequestFullScreen) docElm.webkitRequestFullScreen().catch(() => {});
+            }
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === 'PLAYING') {
+                updateBuildings();
+                drawBackground();
+                frameCount++;
+                bird.update();
+                updatePipes();
+                drawPipes();
+                bird.draw();
+            } else if (gameState === 'PAUSED') {
+                drawBackground();
+                drawPipes();
+                bird.draw();
+            } else {
+                updateBuildings();
+                drawBackground();
+                bird.y = canvas.height / 2 + Math.sin(Date.now() / 300) * 15;
+                bird.draw();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('click', (e) => {
+            initAudioContext();
+            enableFullScreen();
+            
+            if (
+                gameState === 'PLAYING' && 
+                e.target.tagName !== 'BUTTON' && 
+                e.target.tagName !== 'INPUT' && 
+                !e.target.classList.contains('close-btn') &&
+                !e.target.classList.contains('pause-btn') &&
+                !e.target.classList.contains('pause-bar')
+            ) {
+                bird.flap();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            initAudioContext();
+            if (e.code === 'Space') {
+                enableFullScreen();
+                if (gameState === 'PLAYING') bird.flap();
+            }
+        });
+
+        applyLanguage();
+        openMainMenu();
+        gameLoop();
+    </script>
+</body>
+</html>
